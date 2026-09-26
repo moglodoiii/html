@@ -1,0 +1,1567 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HLTV.org - CS2 News, Matches, Rankings & Stats</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js for player stats -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        hltv: {
+                            bg: '#0e131d',
+                            card: '#18202d',
+                            cardHover: '#202a3c',
+                            border: '#293548',
+                            blue: '#2d6bb3',
+                            blueHover: '#3b7fce',
+                            accent: '#f5a623',
+                            green: '#22c55e',
+                            live: '#dc2626',
+                            text: '#d1d5db',
+                            textMuted: '#899bb3'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #0e131d;
+            color: #d1d5db;
+        }
+        /* HLTV signature star rating color */
+        .star-filled { color: #f5a623; }
+        .star-empty { color: #4b5563; }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0e131d;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #293548;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3b7fce;
+        }
+        .live-pulse {
+            animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-hltv-bg text-hltv-text text-sm select-none antialiased">
+
+    <!-- Top Header Bar -->
+    <header class="bg-[#121824] border-b border-hltv-border sticky top-0 z-40 shadow-lg">
+        <div class="max-w-7xl mx-auto px-2 sm:px-4 flex items-center justify-between h-14">
+            
+            <!-- Logo & Main Navigation -->
+            <div class="flex items-center space-x-6">
+                <!-- HLTV Brand Logo -->
+                <button onclick="switchTab('home')" class="flex items-center space-x-2 focus:outline-none">
+                    <div class="bg-hltv-blue text-white font-extrabold text-xl px-2.5 py-1 rounded tracking-wider shadow">
+                        HLTV<span class="text-xs text-hltv-accent font-normal border-l border-blue-400 pl-1.5 ml-1">CS2</span>
+                    </div>
+                </button>
+
+                <!-- Navigation Tabs (Desktop) -->
+                <nav class="hidden md:flex space-x-1 font-semibold text-xs uppercase tracking-wider text-hltv-textMuted">
+                    <button id="nav-home" onclick="switchTab('home')" class="px-3 py-2 rounded hover:text-white hover:bg-hltv-card transition" data-i18n="nav_news">Новости</button>
+                    <button id="nav-matches" onclick="switchTab('matches')" class="px-3 py-2 rounded hover:text-white hover:bg-hltv-card transition flex items-center gap-1.5">
+                        <span data-i18n="nav_matches">Матчи</span> <span class="bg-hltv-live text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">3 LIVE</span>
+                    </button>
+                    <button id="nav-rankings" onclick="switchTab('rankings')" class="px-3 py-2 rounded hover:text-white hover:bg-hltv-card transition" data-i18n="nav_rankings">Рейтинг</button>
+                    <button id="nav-stats" onclick="switchTab('stats')" class="px-3 py-2 rounded hover:text-white hover:bg-hltv-card transition" data-i18n="nav_stats">Статистика</button>
+                    <button id="nav-events" onclick="switchTab('events')" class="px-3 py-2 rounded hover:text-white hover:bg-hltv-card transition" data-i18n="nav_events">Турниры</button>
+                    <button id="nav-forum" onclick="switchTab('forum')" class="px-3 py-2 rounded hover:text-white hover:bg-hltv-card transition" data-i18n="nav_forum">Форум</button>
+                </nav>
+            </div>
+
+            <!-- Header Right Controls -->
+            <div class="flex items-center space-x-3">
+                <!-- Language Switcher Selector -->
+                <div class="flex items-center bg-[#0b0e16] p-1 rounded-lg border border-hltv-border font-mono text-xs">
+                    <button onclick="changeLanguage('en')" id="lang-btn-en" class="px-2 py-0.5 rounded font-bold transition hover:text-white">EN</button>
+                    <button onclick="changeLanguage('uk')" id="lang-btn-uk" class="px-2 py-0.5 rounded font-bold transition hover:text-white">UA</button>
+                    <button onclick="changeLanguage('ru')" id="lang-btn-ru" class="px-2 py-0.5 rounded font-bold transition hover:text-white">RU</button>
+                </div>
+
+                <!-- Search Box -->
+                <div class="relative hidden lg:block">
+                    <input type="text" id="searchInput" onkeyup="handleGlobalSearch()" placeholder="Поиск игрока, команды..." 
+                           class="bg-[#0b0e16] text-xs text-white border border-hltv-border rounded-full py-1.5 pl-8 pr-4 w-40 xl:w-52 focus:outline-none focus:border-hltv-blue transition">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-hltv-textMuted text-xs"></i>
+                </div>
+
+                <!-- Notifications Simulator -->
+                <button onclick="toggleNotifications()" class="relative p-2 rounded-full hover:bg-hltv-card text-hltv-textMuted hover:text-white transition">
+                    <i class="fa-regular fa-bell text-base"></i>
+                    <span class="absolute top-1 right-1 w-2 h-2 bg-hltv-blue rounded-full"></span>
+                </button>
+
+                <!-- Profile Mock -->
+                <div class="flex items-center space-x-2 border-l border-hltv-border pl-3">
+                    <img src="https://images.unsplash.com/photo-1566492031773-4f4e44671857?w=100&auto=format&fit=crop&q=80" alt="Avatar" class="w-7 h-7 rounded-full border border-hltv-blue object-cover">
+                    <span class="hidden xl:inline text-xs font-semibold text-white">s1mple_fan99</span>
+                </div>
+
+                <!-- Mobile Menu Button -->
+                <button onclick="toggleMobileNav()" class="md:hidden p-2 text-hltv-textMuted hover:text-white">
+                    <i class="fa-solid fa-bars text-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Navigation Drawer -->
+        <div id="mobileNav" class="hidden md:hidden bg-[#121824] border-t border-hltv-border px-4 py-3 space-y-2">
+            <button onclick="switchTab('home'); toggleMobileNav()" class="block w-full text-left py-2 font-semibold" data-i18n="nav_news">Новости</button>
+            <button onclick="switchTab('matches'); toggleMobileNav()" class="block w-full text-left py-2 font-semibold text-red-400"><span data-i18n="nav_matches">Матчи</span> (3 LIVE)</button>
+            <button onclick="switchTab('rankings'); toggleMobileNav()" class="block w-full text-left py-2 font-semibold" data-i18n="nav_rankings">Рейтинг</button>
+            <button onclick="switchTab('stats'); toggleMobileNav()" class="block w-full text-left py-2 font-semibold" data-i18n="nav_stats">Статистика</button>
+            <button onclick="switchTab('events'); toggleMobileNav()" class="block w-full text-left py-2 font-semibold" data-i18n="nav_events">Турниры</button>
+            <button onclick="switchTab('forum'); toggleMobileNav()" class="block w-full text-left py-2 font-semibold" data-i18n="nav_forum">Форум</button>
+        </div>
+    </header>
+
+    <!-- Top Live Ticker Ribbon -->
+    <div class="bg-[#121620] border-b border-hltv-border overflow-x-auto py-2 px-3 text-xs whitespace-nowrap scrollbar-thin">
+        <div class="max-w-7xl mx-auto flex items-center space-x-3">
+            <span class="text-xs font-bold text-hltv-accent uppercase tracking-wider flex items-center gap-1">
+                <i class="fa-solid fa-bolt text-yellow-500"></i> <span data-i18n="score_label">Счёт:</span>
+            </span>
+
+            <!-- Ticker Match Items -->
+            <div id="topTickerContainer" class="flex items-center space-x-3">
+                <!-- Dynamically populated via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Layout Container -->
+    <main class="max-w-7xl mx-auto px-2 sm:px-4 py-4 flex-grow w-full">
+
+        <!-- TAB 1: HOME PAGE -->
+        <div id="tab-home" class="tab-content grid grid-cols-1 lg:grid-cols-12 gap-4">
+            
+            <!-- Left Main Column (News & Featured Matches) - 8 Cols -->
+            <div class="lg:col-span-8 space-y-4">
+
+                <!-- Featured Major Headline Banner -->
+                <div id="heroNewsBanner" class="relative rounded-lg overflow-hidden border border-hltv-border bg-hltv-card group cursor-pointer" onclick="openArticleModal(0)">
+                    <!-- Content rendered dynamically via JS -->
+                </div>
+
+                <!-- Match Stars Quick Filters -->
+                <div class="bg-hltv-card p-3 rounded-lg border border-hltv-border flex items-center justify-between flex-wrap gap-2">
+                    <div class="flex items-center space-x-2">
+                        <span class="font-bold text-xs uppercase text-hltv-textMuted" data-i18n="matches_day">Матчи дня:</span>
+                        <div class="flex space-x-1" id="starFilterButtons">
+                            <button onclick="filterMatchesByStars(0)" class="px-2 py-1 text-xs rounded bg-hltv-blue text-white font-medium" data-i18n="filter_all">Все</button>
+                            <button onclick="filterMatchesByStars(3)" class="px-2 py-1 text-xs rounded bg-[#0b0e16] hover:bg-hltv-border text-yellow-400 font-medium">3+ ★</button>
+                            <button onclick="filterMatchesByStars(5)" class="px-2 py-1 text-xs rounded bg-[#0b0e16] hover:bg-hltv-border text-yellow-400 font-medium">5 ★ Top</button>
+                        </div>
+                    </div>
+                    <span class="text-xs text-hltv-textMuted" id="matchCounterText">Показано 6 матчей</span>
+                </div>
+
+                <!-- Today's Match List Box -->
+                <div class="bg-hltv-card rounded-lg border border-hltv-border overflow-hidden">
+                    <div class="bg-[#121824] px-4 py-2.5 border-b border-hltv-border font-bold text-xs uppercase text-hltv-textMuted flex justify-between items-center">
+                        <span class="flex items-center gap-1.5"><i class="fa-solid fa-gamepad text-hltv-blue"></i> <span data-i18n="main_matches_title">Главные встречи</span></span>
+                        <span class="text-[11px] text-gray-400 font-normal" data-i18n="time_zone">Время: MSK (UTC+3)</span>
+                    </div>
+
+                    <div id="homeMatchesContainer" class="divide-y divide-hltv-border">
+                        <!-- Populated dynamically via JS -->
+                    </div>
+                </div>
+
+                <!-- Latest CS2 News List Section -->
+                <div class="bg-hltv-card rounded-lg border border-hltv-border p-4">
+                    <div class="flex items-center justify-between mb-4 border-b border-hltv-border pb-2">
+                        <h2 class="font-bold text-base text-white flex items-center gap-2">
+                            <i class="fa-solid fa-newspaper text-hltv-blue"></i> <span data-i18n="latest_news">Последние новости CS2</span>
+                        </h2>
+                        <button onclick="switchTab('home')" class="text-xs text-hltv-blue hover:underline"><span data-i18n="all_news">Все новости</span> &rarr;</button>
+                    </div>
+
+                    <div id="latestNewsContainer" class="space-y-3">
+                        <!-- News items JS -->
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Sidebar Column (Rankings, Tournaments, Polls) - 4 Cols -->
+            <div class="lg:col-span-4 space-y-4">
+
+                <!-- Top 10 World Ranking Widget -->
+                <div class="bg-hltv-card rounded-lg border border-hltv-border p-3">
+                    <div class="flex items-center justify-between pb-2 mb-2 border-b border-hltv-border">
+                        <span class="font-bold text-xs uppercase text-white flex items-center gap-1.5">
+                            <i class="fa-solid fa-trophy text-yellow-500"></i> <span data-i18n="hltv_rank_title">Рейтинг HLTV (Топ 10)</span>
+                        </span>
+                        <span class="text-[10px] text-hltv-textMuted"><span data-i18n="updated">Обновлено</span>: 23 Mar</span>
+                    </div>
+
+                    <div id="sidebarRankingContainer" class="space-y-1.5">
+                        <!-- Dynamically filled with top 10 teams -->
+                    </div>
+
+                    <button onclick="switchTab('rankings')" class="w-full mt-3 py-1.5 text-xs text-center font-bold bg-[#121824] hover:bg-hltv-border text-hltv-blue rounded transition">
+                        <span data-i18n="full_ranking">Полный рейтинг Top 30</span> &rarr;
+                    </button>
+                </div>
+
+                <!-- Live / Ongoing Tournaments Widget -->
+                <div class="bg-hltv-card rounded-lg border border-hltv-border p-3">
+                    <div class="flex items-center justify-between pb-2 mb-2 border-b border-hltv-border">
+                        <span class="font-bold text-xs uppercase text-white flex items-center gap-1.5">
+                            <i class="fa-solid fa-calendar-days text-hltv-blue"></i> <span data-i18n="ongoing_events">Текущие турниры</span>
+                        </span>
+                    </div>
+                    <div class="space-y-2" id="sidebarEventsList">
+                        <!-- Rendered by JS -->
+                    </div>
+                </div>
+
+                <!-- Community Poll Widget -->
+                <div class="bg-hltv-card rounded-lg border border-hltv-border p-3">
+                    <div class="flex items-center justify-between pb-2 mb-2 border-b border-hltv-border">
+                        <span class="font-bold text-xs uppercase text-white flex items-center gap-1.5">
+                            <i class="fa-solid fa-check-to-slot text-green-400"></i> <span data-i18n="poll_of_day">Опрос дня</span>
+                        </span>
+                    </div>
+                    <p class="text-xs text-white font-medium mb-3" data-i18n="poll_question">Кто победит в Гранд-Финале IEM Chengdu 2026?</p>
+                    
+                    <div id="pollOptionsContainer" class="space-y-2">
+                        <button onclick="votePoll(0)" class="w-full text-left p-2 rounded bg-[#121824] hover:bg-hltv-blue/20 border border-hltv-border hover:border-hltv-blue transition text-xs flex justify-between items-center group">
+                            <span class="font-bold group-hover:text-white">Natus Vincere</span>
+                            <span class="text-hltv-textMuted font-mono text-[11px]" id="poll-val-0">54%</span>
+                        </button>
+                        <button onclick="votePoll(1)" class="w-full text-left p-2 rounded bg-[#121824] hover:bg-hltv-blue/20 border border-hltv-border hover:border-hltv-blue transition text-xs flex justify-between items-center group">
+                            <span class="font-bold group-hover:text-white">Team Vitality</span>
+                            <span class="text-hltv-textMuted font-mono text-[11px]" id="poll-val-1">46%</span>
+                        </button>
+                    </div>
+                    <div class="text-[10px] text-hltv-textMuted mt-2 text-right"><span data-i18n="total_votes">Всего голосов:</span> 18,420</div>
+                </div>
+
+                <!-- Forum Latest Discussions Mini Widget -->
+                <div class="bg-hltv-card rounded-lg border border-hltv-border p-3">
+                    <div class="flex items-center justify-between pb-2 mb-2 border-b border-hltv-border">
+                        <span class="font-bold text-xs uppercase text-white flex items-center gap-1.5">
+                            <i class="fa-solid fa-comments text-hltv-blue"></i> <span data-i18n="forum_active">Активно на Форуме</span>
+                        </span>
+                        <button onclick="switchTab('forum')" class="text-[11px] text-hltv-blue" data-i18n="go_to_forum">Перейти</button>
+                    </div>
+                    <div id="sidebarForumThreads" class="space-y-2">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- TAB 2: FULL MATCHES & RESULTS -->
+        <div id="tab-matches" class="tab-content hidden space-y-4">
+            <div class="bg-hltv-card p-4 rounded-lg border border-hltv-border flex flex-col md:flex-row justify-between items-center gap-4">
+                <div>
+                    <h1 class="text-xl font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-crosshairs text-hltv-blue"></i> <span data-i18n="matches_title">Матчи & Результаты CS2</span>
+                    </h1>
+                    <p class="text-xs text-hltv-textMuted" data-i18n="matches_subtitle">Все запланированные встречи, онлайн трансляции и архив результатов</p>
+                </div>
+
+                <!-- Filter Sub-tabs -->
+                <div class="flex items-center space-x-1 bg-[#121824] p-1 rounded-lg border border-hltv-border">
+                    <button onclick="switchMatchSubtab('all')" id="subtab-match-all" class="px-3 py-1.5 text-xs font-bold rounded bg-hltv-blue text-white" data-i18n="all_matches">Все матчи</button>
+                    <button onclick="switchMatchSubtab('live')" id="subtab-match-live" class="px-3 py-1.5 text-xs font-bold rounded text-hltv-textMuted hover:text-white">
+                        Live <span class="bg-red-600 text-white text-[10px] px-1.5 rounded-full ml-1">3</span>
+                    </button>
+                    <button onclick="switchMatchSubtab('results')" id="subtab-match-results" class="px-3 py-1.5 text-xs font-bold rounded text-hltv-textMuted hover:text-white" data-i18n="finished">Результаты</button>
+                </div>
+            </div>
+
+            <!-- Matches Main Grid Container -->
+            <div id="matchesTabContent" class="bg-hltv-card rounded-lg border border-hltv-border divide-y divide-hltv-border">
+                <!-- Dynamically filled in JS -->
+            </div>
+        </div>
+
+        <!-- TAB 3: TEAM RANKINGS -->
+        <div id="tab-rankings" class="tab-content hidden space-y-4">
+            <div class="bg-hltv-card p-4 rounded-lg border border-hltv-border">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <div>
+                        <h1 class="text-xl font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-ranking-star text-yellow-500"></i> <span data-i18n="rankings_title">Мировой Рейтинг Команд HLTV</span>
+                        </h1>
+                        <p class="text-xs text-hltv-textMuted" data-i18n="rankings_subtitle">Обновляется каждый понедельник на основе результатов за последние 12 месяцев</p>
+                    </div>
+                    <div class="text-xs font-mono bg-[#121824] px-3 py-1.5 rounded border border-hltv-border text-hltv-accent" data-i18n="current_period">
+                        Текущий период: Мартовский зачёт 2026
+                    </div>
+                </div>
+            </div>
+
+            <!-- Full Ranking Table List -->
+            <div id="fullRankingsList" class="space-y-2">
+                <!-- Dynamically rendered top 30 JS -->
+            </div>
+        </div>
+
+        <!-- TAB 4: PLAYER STATS -->
+        <div id="tab-stats" class="tab-content hidden space-y-4">
+            <div class="bg-hltv-card p-4 rounded-lg border border-hltv-border flex justify-between items-center flex-wrap gap-4">
+                <div>
+                    <h1 class="text-xl font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line text-hltv-blue"></i> <span data-i18n="stats_title">База Статистики Игроков CS2</span>
+                    </h1>
+                    <p class="text-xs text-hltv-textMuted" data-i18n="stats_subtitle">Лидеры по Rating 2.0 / 3.0, K/D, Headshot % и снайперским убийствам</p>
+                </div>
+                <div class="flex gap-2">
+                    <select id="statsFilterTime" onchange="renderStatsTable()" class="bg-[#121824] border border-hltv-border rounded text-xs px-3 py-1.5 text-white">
+                        <option value="2026" data-i18n="time_2026">За 2026 год (LAN)</option>
+                        <option value="major" data-i18n="time_major">Только Мажоры</option>
+                        <option value="alltime" data-i18n="time_alltime">За всё время</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Players Leaderboard Grid -->
+            <div class="bg-hltv-card rounded-lg border border-hltv-border overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-[#121824] border-b border-hltv-border text-hltv-textMuted text-[11px] uppercase font-bold">
+                            <th class="py-3 px-4" data-i18n="th_player">Игрок</th>
+                            <th class="py-3 px-3" data-i18n="th_team">Команда</th>
+                            <th class="py-3 px-3 text-center" data-i18n="th_maps">Карты</th>
+                            <th class="py-3 px-3 text-center" data-i18n="th_kddiff">K/D Diff</th>
+                            <th class="py-3 px-3 text-center" data-i18n="th_kd">KD</th>
+                            <th class="py-3 px-3 text-center" data-i18n="th_adr">ADR</th>
+                            <th class="py-3 px-3 text-center" data-i18n="th_kast">KAST</th>
+                            <th class="py-3 px-3 text-right" data-i18n="th_rating">Rating 2.0</th>
+                        </tr>
+                    </thead>
+                    <tbody id="statsLeaderboardBody" class="divide-y divide-hltv-border text-xs font-medium">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- TAB 5: EVENTS -->
+        <div id="tab-events" class="tab-content hidden space-y-4">
+            <div class="bg-hltv-card p-4 rounded-lg border border-hltv-border">
+                <h1 class="text-xl font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-trophy text-hltv-accent"></i> <span data-i18n="events_title">Турниры & Киберспортивные Ивенты 2026</span>
+                </h1>
+                <p class="text-xs text-hltv-textMuted" data-i18n="events_subtitle">Главные LAN-турниры сезона CS2</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="eventsGridContainer">
+                <!-- Dynamically filled with tournament cards -->
+            </div>
+        </div>
+
+        <!-- TAB 6: COMMUNITY FORUM -->
+        <div id="tab-forum" class="tab-content hidden space-y-4">
+            <div class="bg-hltv-card p-4 rounded-lg border border-hltv-border flex justify-between items-center">
+                <div>
+                    <h1 class="text-xl font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-comments text-hltv-blue"></i> <span data-i18n="forum_title">HLTV Форум & Сообщество</span>
+                    </h1>
+                    <p class="text-xs text-hltv-textMuted" data-i18n="forum_subtitle">Горячие дискуссии, обсуждение ростеров и киберспортивные мемы</p>
+                </div>
+                <button onclick="openNewThreadModal()" class="px-3 py-2 bg-hltv-blue hover:bg-hltv-blueHover text-white rounded text-xs font-bold transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-plus"></i> <span data-i18n="create_thread">Создать тему</span>
+                </button>
+            </div>
+
+            <!-- Forum Threads Table -->
+            <div class="bg-hltv-card rounded-lg border border-hltv-border overflow-hidden">
+                <div class="bg-[#121824] px-4 py-2 border-b border-hltv-border font-bold text-xs uppercase text-hltv-textMuted grid grid-cols-12">
+                    <span class="col-span-7 sm:col-span-8" data-i18n="th_topic">Тема</span>
+                    <span class="col-span-2 text-center" data-i18n="th_author">Автор</span>
+                    <span class="col-span-3 sm:col-span-2 text-right" data-i18n="th_replies">Ответы</span>
+                </div>
+                <div id="forumThreadsContainer" class="divide-y divide-hltv-border">
+                    <!-- Dynamic Forum Rows -->
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-[#121824] border-t border-hltv-border py-6 mt-8 text-xs text-hltv-textMuted">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-2">
+                <div class="bg-hltv-blue text-white font-extrabold text-lg px-2 py-0.5 rounded">HLTV</div>
+                <span data-i18n="footer_copy">© 2026 HLTV.org - Ведущий новостной портал Counter-Strike</span>
+            </div>
+            <div class="flex space-x-4">
+                <a href="#" class="hover:text-white" data-i18n="rules">Правила</a>
+                <a href="#" class="hover:text-white" data-i18n="ads">Реклама</a>
+                <a href="#" class="hover:text-white" data-i18n="api">API</a>
+                <a href="#" class="hover:text-white" data-i18n="jobs">Вакансии</a>
+                <a href="#" class="hover:text-white" data-i18n="support">Поддержка</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- MODAL 1: MATCH DETAIL & LIVE SCOREBOARD SIMULATOR -->
+    <div id="matchModal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-2 sm:p-4 overflow-y-auto backdrop-blur-sm">
+        <div class="bg-hltv-card border border-hltv-border rounded-xl w-full max-w-4xl max-h-[92vh] overflow-y-auto shadow-2xl relative">
+            <button onclick="closeMatchModal()" class="absolute top-3 right-3 text-gray-400 hover:text-white bg-[#121824] rounded-full p-2 z-10">
+                <i class="fa-solid fa-xmark text-base"></i>
+            </button>
+            <div id="matchModalContent" class="p-4 sm:p-6">
+                <!-- Loaded dynamically by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: PLAYER PROFILE DETAILS -->
+    <div id="playerModal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-2 sm:p-4 overflow-y-auto backdrop-blur-sm">
+        <div class="bg-hltv-card border border-hltv-border rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl relative">
+            <button onclick="closePlayerModal()" class="absolute top-3 right-3 text-gray-400 hover:text-white bg-[#121824] rounded-full p-2 z-10">
+                <i class="fa-solid fa-xmark text-base"></i>
+            </button>
+            <div id="playerModalContent" class="p-4 sm:p-6">
+                <!-- Dynamically loaded player profile info -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: ARTICLE READER -->
+    <div id="articleModal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-2 sm:p-4 overflow-y-auto backdrop-blur-sm">
+        <div class="bg-hltv-card border border-hltv-border rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl relative">
+            <button onclick="closeArticleModal()" class="absolute top-3 right-3 text-gray-400 hover:text-white bg-[#121824] rounded-full p-2 z-10">
+                <i class="fa-solid fa-xmark text-base"></i>
+            </button>
+            <div id="articleModalContent" class="p-4 sm:p-6 space-y-4">
+                <!-- Dynamic news body and comment section -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 4: NEW FORUM THREAD -->
+    <div id="newThreadModal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-2 sm:p-4 backdrop-blur-sm">
+        <div class="bg-hltv-card border border-hltv-border rounded-xl w-full max-w-lg p-5 shadow-2xl relative">
+            <button onclick="closeNewThreadModal()" class="absolute top-3 right-3 text-gray-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-base"></i>
+            </button>
+            <h2 class="text-base font-bold text-white mb-4" data-i18n="new_thread_title">Создать новую тему на Форуме</h2>
+            <div class="space-y-3">
+                <div>
+                    <label class="text-xs text-hltv-textMuted block mb-1" data-i18n="thread_title_label">Заголовок темы</label>
+                    <input type="text" id="newThreadTitle" placeholder="ex: Who will be MVP?" class="w-full bg-[#121824] border border-hltv-border rounded p-2 text-xs text-white focus:outline-none focus:border-hltv-blue">
+                </div>
+                <div>
+                    <label class="text-xs text-hltv-textMuted block mb-1" data-i18n="thread_body_label">Сообщение</label>
+                    <textarea id="newThreadBody" rows="4" placeholder="..." class="w-full bg-[#121824] border border-hltv-border rounded p-2 text-xs text-white focus:outline-none focus:border-hltv-blue"></textarea>
+                </div>
+                <button onclick="submitNewThread()" class="w-full py-2 bg-hltv-blue hover:bg-hltv-blueHover text-white font-bold text-xs rounded transition" data-i18n="publish_thread">
+                    Опубликовать тему
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        
+        // --- MULTILINGUAL DICTIONARIES ---
+        let currentLang = 'ru'; // Default language
+
+        const I18N = {
+            ru: {
+                nav_news: "Новости",
+                nav_matches: "Матчи",
+                nav_rankings: "Рейтинг",
+                nav_stats: "Статистика",
+                nav_events: "Турниры",
+                nav_forum: "Форум",
+                search_placeholder: "Поиск игрока, команды...",
+                score_label: "Счёт:",
+                matches_day: "Матчи дня:",
+                filter_all: "Все",
+                matches_shown: "Показано {count} матчей",
+                main_matches_title: "Главные встречи (Прямой эфир и расписание)",
+                time_zone: "Время: MSK (UTC+3)",
+                latest_news: "Последние новости CS2",
+                all_news: "Все новости",
+                hltv_rank_title: "Рейтинг HLTV (Топ 10)",
+                updated: "Обновлено",
+                full_ranking: "Полный рейтинг Top 30",
+                ongoing_events: "Текущие турниры",
+                poll_of_day: "Опрос дня",
+                poll_question: "Кто победит в Гранд-Финале IEM Chengdu 2026?",
+                total_votes: "Всего голосов:",
+                forum_active: "Активно на Форуме",
+                go_to_forum: "Перейти",
+                matches_title: "Матчи & Результаты CS2",
+                matches_subtitle: "Все запланированные встречи, онлайн трансляции и архив результатов",
+                all_matches: "Все матчи",
+                rankings_title: "Мировой Рейтинг Команд HLTV",
+                rankings_subtitle: "Обновляется каждый понедельник на основе результатов за последние 12 месяцев",
+                current_period: "Текущий период: Мартовский зачёт 2026",
+                roster: "Состав",
+                points: "очков",
+                stats_title: "База Статистики Игроков CS2",
+                stats_subtitle: "Лидеры по Rating 2.0 / 3.0, K/D, Headshot % и снайперским убийствам",
+                time_2026: "За 2026 год (LAN)",
+                time_major: "Только Мажоры",
+                time_alltime: "За всё время",
+                th_player: "Игрок",
+                th_team: "Команда",
+                th_maps: "Карты",
+                th_kddiff: "K/D Diff",
+                th_kd: "KD",
+                th_adr: "ADR",
+                th_kast: "KAST",
+                th_rating: "Rating 2.0",
+                events_title: "Турниры & Киберспортивные Ивенты 2026",
+                events_subtitle: "Главные LAN-турниры сезона CS2",
+                teams_count: "Команд участниц",
+                forum_title: "HLTV Форум & Сообщество",
+                forum_subtitle: "Горячие дискуссии, обсуждение ростеров и киберспортивные мемы",
+                create_thread: "Создать тему",
+                th_topic: "Тема",
+                th_author: "Автор",
+                th_replies: "Ответы",
+                footer_copy: "© 2026 HLTV.org - Ведущий новостной портал Counter-Strike",
+                rules: "Правила",
+                ads: "Реклама",
+                api: "API",
+                jobs: "Вакансии",
+                support: "Поддержка",
+                sim_round: "+ Симулировать раунд",
+                live_feed: "Прямой Киллфид (Live Feed)",
+                map_results: "Результаты карт (BO3):",
+                player_stats_map: "Статистика игроков на решающей карте:",
+                leave_comment: "Оставить комментарий...",
+                send_comment: "Отправить",
+                comments: "Комментарии",
+                new_thread_title: "Создать новую тему на Форуме",
+                thread_title_label: "Заголовок темы",
+                thread_body_label: "Сообщение",
+                publish_thread: "Опубликовать тему",
+                live_now: "Прямой эфир",
+                finished: "Завершен",
+                time_today: "Сегодня",
+                time_tomorrow: "Завтра",
+                min_ago: "мин назад"
+            },
+            en: {
+                nav_news: "News",
+                nav_matches: "Matches",
+                nav_rankings: "Rankings",
+                nav_stats: "Stats",
+                nav_events: "Events",
+                nav_forum: "Forum",
+                search_placeholder: "Search player, team...",
+                score_label: "Score:",
+                matches_day: "Matches today:",
+                filter_all: "All",
+                matches_shown: "Showing {count} matches",
+                main_matches_title: "Featured Matches (Live & Upcoming)",
+                time_zone: "Time: UTC+3",
+                latest_news: "Latest CS2 News",
+                all_news: "All news",
+                hltv_rank_title: "HLTV Ranking (Top 10)",
+                updated: "Updated",
+                full_ranking: "Complete Top 30 Ranking",
+                ongoing_events: "Ongoing Events",
+                poll_of_day: "Poll of the Day",
+                poll_question: "Who will win the IEM Chengdu 2026 Grand Final?",
+                total_votes: "Total votes:",
+                forum_active: "Active Forum Threads",
+                go_to_forum: "Go to forum",
+                matches_title: "CS2 Matches & Results",
+                matches_subtitle: "All scheduled fixtures, live streams and results archive",
+                all_matches: "All matches",
+                rankings_title: "HLTV World Team Rankings",
+                rankings_subtitle: "Updated every Monday based on performance over the last 12 months",
+                current_period: "Current period: March 2026",
+                roster: "Roster",
+                points: "pts",
+                stats_title: "CS2 Player Stats Database",
+                stats_subtitle: "Leaders in Rating 2.0 / 3.0, K/D, Headshot % and AWP frags",
+                time_2026: "Year 2026 (LAN)",
+                time_major: "Majors only",
+                time_alltime: "All time",
+                th_player: "Player",
+                th_team: "Team",
+                th_maps: "Maps",
+                th_kddiff: "K/D Diff",
+                th_kd: "KD",
+                th_adr: "ADR",
+                th_kast: "KAST",
+                th_rating: "Rating 2.0",
+                events_title: "Tournaments & Esports Events 2026",
+                events_subtitle: "Premier CS2 LAN tournaments of the season",
+                teams_count: "Participating Teams",
+                forum_title: "HLTV Forum & Community",
+                forum_subtitle: "Hot discussions, roster moves and esports memes",
+                create_thread: "New Thread",
+                th_topic: "Topic",
+                th_author: "Author",
+                th_replies: "Replies",
+                footer_copy: "© 2026 HLTV.org - The leading Counter-Strike coverage portal",
+                rules: "Rules",
+                ads: "Advertise",
+                api: "API",
+                jobs: "Careers",
+                support: "Support",
+                sim_round: "+ Simulate Round",
+                live_feed: "Live Kill Feed",
+                map_results: "Map Results (BO3):",
+                player_stats_map: "Player statistics on decider map:",
+                leave_comment: "Post a comment...",
+                send_comment: "Submit",
+                comments: "Comments",
+                new_thread_title: "Create New Forum Thread",
+                thread_title_label: "Thread Title",
+                thread_body_label: "Message Content",
+                publish_thread: "Post Thread",
+                live_now: "LIVE NOW",
+                finished: "Finished",
+                time_today: "Today",
+                time_tomorrow: "Tomorrow",
+                min_ago: "min ago"
+            },
+            uk: {
+                nav_news: "Новини",
+                nav_matches: "Матчі",
+                nav_rankings: "Рейтинг",
+                nav_stats: "Статистика",
+                nav_events: "Турніри",
+                nav_forum: "Форум",
+                search_placeholder: "Пошук гравця, команди...",
+                score_label: "Рахунок:",
+                matches_day: "Матчі дня:",
+                filter_all: "Усі",
+                matches_shown: "Показано {count} матчів",
+                main_matches_title: "Головні зустрічі (Прямий ефір та розклад)",
+                time_zone: "Час: UTC+3",
+                latest_news: "Останні новини CS2",
+                all_news: "Усі новини",
+                hltv_rank_title: "Рейтинг HLTV (Топ 10)",
+                updated: "Оновлено",
+                full_ranking: "Повний рейтинг Top 30",
+                ongoing_events: "Поточні турніри",
+                poll_of_day: "Опитування дня",
+                poll_question: "Хто переможе у Гранд-Фіналі IEM Chengdu 2026?",
+                total_votes: "Усього голосів:",
+                forum_active: "Активно на Форумі",
+                go_to_forum: "Перейти",
+                matches_title: "Матчі та Результати CS2",
+                matches_subtitle: "Усі заплановані зустрічі, онлайн трансляції та архів результатів",
+                all_matches: "Усі матчі",
+                rankings_title: "Світовий Рейтинг Команд HLTV",
+                rankings_subtitle: "Оновлюється щопонеділка на основі результатів за останні 12 місяців",
+                current_period: "Поточний період: Березневий залік 2026",
+                roster: "Склад",
+                points: "очок",
+                stats_title: "База Статистики Гравців CS2",
+                stats_subtitle: "Лідери за Rating 2.0 / 3.0, K/D, Headshot % та снайперськими вбивствами",
+                time_2026: "За 2026 рік (LAN)",
+                time_major: "Тільки Мажори",
+                time_alltime: "За весь час",
+                th_player: "Гравець",
+                th_team: "Команда",
+                th_maps: "Карти",
+                th_kddiff: "K/D Diff",
+                th_kd: "KD",
+                th_adr: "ADR",
+                th_kast: "KAST",
+                th_rating: "Rating 2.0",
+                events_title: "Турніри та Кіберспортивні Події 2026",
+                events_subtitle: "Головні LAN-турніри сезону CS2",
+                teams_count: "Команд-учасниць",
+                forum_title: "HLTV Форум та Спільнота",
+                forum_subtitle: "Гарячі дискусії, обговорення ростерів та кіберспортивні меми",
+                create_thread: "Створити тему",
+                th_topic: "Тема",
+                th_author: "Автор",
+                th_replies: "Відповіді",
+                footer_copy: "© 2026 HLTV.org - Провідний новинний портал Counter-Strike",
+                rules: "Правила",
+                ads: "Реклама",
+                api: "API",
+                jobs: "Вакансії",
+                support: "Підтримка",
+                sim_round: "+ Симулювати раунд",
+                live_feed: "Прямий Кіллфід (Live Feed)",
+                map_results: "Результати карт (BO3):",
+                player_stats_map: "Статистика гравців на вирішальній карті:",
+                leave_comment: "Залишити коментар...",
+                send_comment: "Надіслати",
+                comments: "Коментарі",
+                new_thread_title: "Створити нову тему на Форумі",
+                thread_title_label: "Заголовок теми",
+                thread_body_label: "Повідомлення",
+                publish_thread: "Опублікувати тему",
+                live_now: "Прямий ефір",
+                finished: "Завершено",
+                time_today: "Сьогодні",
+                time_tomorrow: "Завтра",
+                min_ago: "хв тому"
+            }
+        };
+
+        function t(key) {
+            return (I18N[currentLang] && I18N[currentLang][key]) ? I18N[currentLang][key] : key;
+        }
+
+        function changeLanguage(lang) {
+            currentLang = lang;
+            
+            // Highlight language switch buttons
+            ['en', 'uk', 'ru'].forEach(l => {
+                const btn = document.getElementById(`lang-btn-${l}`);
+                if (btn) {
+                    if (l === lang) {
+                        btn.className = "px-2 py-0.5 rounded font-bold transition bg-hltv-blue text-white shadow";
+                    } else {
+                        btn.className = "px-2 py-0.5 rounded font-bold transition text-hltv-textMuted hover:text-white";
+                    }
+                }
+            });
+
+            // Update DOM text elements with data-i18n
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const k = el.getAttribute('data-i18n');
+                el.innerText = t(k);
+            });
+
+            // Update Search Placeholder
+            const searchEl = document.getElementById('searchInput');
+            if (searchEl) searchEl.placeholder = t('search_placeholder');
+
+            // Refresh Dynamic Tab Elements
+            renderHeroBanner();
+            renderTopTicker();
+            renderHomeMatches();
+            renderSidebarRankings();
+            renderSidebarEvents();
+            renderLatestNews();
+            renderForumTab();
+            renderMatchesTab();
+            renderRankingsTab();
+            renderStatsTable();
+            renderEventsTab();
+        }
+
+        // --- DATA MODELS & STATE ---
+        let currentTab = 'home';
+        let matchFilterStars = 0;
+        let activeMatchSubtab = 'all';
+
+        // Teams Database
+        const TEAMS = [
+            { id: 'navi', name: 'Natus Vincere', country: '🇺🇦', flag: '🇺🇦', points: 985, change: 0, rank: 1, roster: ['b1t', 'w0nderful', 'iJL', 'Aleksib', 'jL'] },
+            { id: 'vitality', name: 'Team Vitality', country: '🇫🇷', flag: '🇫🇷', points: 940, change: 0, rank: 2, roster: ['ZywOo', 'apex', 'spinx', 'flameZ', 'mezii'] },
+            { id: 'spirit', name: 'Team Spirit', country: '🇷🇺', flag: '🇷🇺', points: 890, change: 1, rank: 3, roster: ['donk', 'sh1ro', 'chopper', 'magixx', 'zoner'] },
+            { id: 'faze', name: 'FaZe Clan', country: '🇪🇺', flag: '🇪🇺', points: 810, change: -1, rank: 4, roster: ['karrigan', 'ropz', 'frozen', 'rain', 'broky'] },
+            { id: 'mouz', name: 'MOUZ', country: '🇪🇺', flag: '🇪🇺', points: 760, change: 0, rank: 5, roster: ['torzsi', 'xertioN', 'siuhy', 'Jimpphat', 'Brollan'] },
+            { id: 'g2', name: 'G2 Esports', country: '🇪🇺', flag: '🇪🇺', points: 710, change: 2, rank: 6, roster: ['m0NESY', 'NiKo', 'huNter-', 'malbsMd', 'Snax'] },
+            { id: 'astralis', name: 'Astralis', country: '🇩🇰', flag: '🇩🇰', points: 620, change: -1, rank: 7, roster: ['device', 'staehr', 'jabbi', 'stavn', 'br0'] },
+            { id: 'liquid', name: 'Team Liquid', country: '🇺🇸', flag: '🇺🇸', points: 540, change: 3, rank: 8, roster: ['twistzz', 'NAF', 'ultimate', 'jks', 'ultimate'] },
+            { id: 'vp', name: 'Virtus.pro', country: '🇦🇲', flag: '🇦🇲', points: 490, change: -1, rank: 9, roster: ['Jame', 'FL1T', 'fame', 'n0rb3r7', 'electroNic'] },
+            { id: 'heroic', name: 'Heroic', country: '🇪🇺', flag: '🇪🇺', points: 430, change: 0, rank: 10, roster: ['sjuush', 'kyxsan', 'NertZ', 'degster', 'TeSeS'] }
+        ];
+
+        // Players Database
+        const PLAYERS = [
+            { name: 'donk', fullName: 'Danil Kryshkovets', team: 'Team Spirit', country: '🇷🇺', rating: 1.38, kd: 1.48, adr: 93.4, kast: '76.2%', maps: 84, img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80', role: 'Rifler / Entry' },
+            { name: 'ZywOo', fullName: 'Mathieu Herbaut', team: 'Team Vitality', country: '🇫🇷', rating: 1.32, kd: 1.39, adr: 86.8, kast: '78.5%', maps: 112, img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&auto=format&fit=crop&q=80', role: 'AWPer / Star' },
+            { name: 'm0NESY', fullName: 'Ilya Osipov', team: 'G2 Esports', country: '🇷🇺', rating: 1.29, kd: 1.34, adr: 83.1, kast: '75.9%', maps: 108, img: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&auto=format&fit=crop&q=80', role: 'AWPer' },
+            { name: 's1mple', fullName: 'Oleksandr Kostyliev', team: 'Falcons (Loan)', country: '🇺🇦', rating: 1.25, kd: 1.28, adr: 82.5, kast: '74.1%', maps: 45, img: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=200&auto=format&fit=crop&q=80', role: 'AWPer / GOAT' },
+            { name: 'b1t', fullName: 'Valeriy Vakhovskiy', team: 'Natus Vincere', country: '🇺🇦', rating: 1.18, kd: 1.20, adr: 79.2, kast: '74.8%', maps: 120, img: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=200&auto=format&fit=crop&q=80', role: 'Headshot Machine' },
+            { name: 'NiKo', fullName: 'Nikola Kovač', team: 'G2 Esports', country: '🇧🇦', rating: 1.17, kd: 1.18, adr: 84.0, kast: '72.4%', maps: 105, img: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&auto=format&fit=crop&q=80', role: 'Rifler' },
+            { name: 'ropz', fullName: 'Robin Kool', team: 'FaZe Clan', country: '🇪🇪', rating: 1.15, kd: 1.16, adr: 77.5, kast: '75.0%', maps: 110, img: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=200&auto=format&fit=crop&q=80', role: 'Lurker' }
+        ];
+
+        // Matches State
+        let MATCHES = [
+            {
+                id: 101,
+                team1: 'NAVI',
+                team2: 'Team Vitality',
+                t1Score: 1,
+                t2Score: 1,
+                isLive: true,
+                liveMap: 'Mirage (Map 3)',
+                stars: 5,
+                event: 'IEM Chengdu 2026 • Grand-Final',
+                time: 'LIVE NOW',
+                currentRoundT1: 11,
+                currentRoundT2: 10,
+                killFeed: [
+                    'b1t 🔫 headshot ZywOo with AK-47',
+                    'w0nderful 🎯 sniped apex with AWP',
+                    'spinx 💣 planted C4 (Site A)',
+                    'jL 💣 defused bomb (+3s remaining)'
+                ]
+            },
+            {
+                id: 102,
+                team1: 'Team Spirit',
+                team2: 'FaZe Clan',
+                t1Score: 14,
+                t2Score: 12,
+                isLive: true,
+                liveMap: 'Ancient (Map 2)',
+                stars: 4,
+                event: 'IEM Chengdu 2026 • Semi-Final',
+                time: 'LIVE NOW',
+                currentRoundT1: 14,
+                currentRoundT2: 12,
+                killFeed: ['donk 💥 3k Spraydown on B Site!']
+            },
+            {
+                id: 103,
+                team1: 'G2 Esports',
+                team2: 'MOUZ',
+                t1Score: 0,
+                t2Score: 0,
+                isLive: false,
+                stars: 4,
+                event: 'IEM Chengdu 2026',
+                time: '20:30'
+            },
+            {
+                id: 104,
+                team1: 'Astralis',
+                team2: 'Team Liquid',
+                t1Score: 2,
+                t2Score: 0,
+                isLive: false,
+                isFinished: true,
+                stars: 3,
+                event: 'ESL Pro League S21',
+                time: '13-9, 13-11'
+            },
+            {
+                id: 105,
+                team1: 'Virtus.pro',
+                team2: 'Heroic',
+                t1Score: 0,
+                t2Score: 0,
+                isLive: false,
+                stars: 3,
+                event: 'ESL Pro League S21',
+                time: '16:00'
+            }
+        ];
+
+        // Articles Multilingual Data
+        const ARTICLES = [
+            {
+                id: 0,
+                title: {
+                    ru: 'NAVI выходят в Гранд-Финал IEM Chengdu после драматичной победы над Team Spirit со счётом 2-1',
+                    en: 'NAVI advance to IEM Chengdu Grand Final after dramatic 2-1 victory over Team Spirit',
+                    uk: 'NAVI виходять у Гранд-Фінал IEM Chengdu після драматичної перемоги над Team Spirit з рахунком 2-1'
+                },
+                author: 'MAJ3R_HLTV',
+                time: '20',
+                commentsCount: 142,
+                content: {
+                    ru: `Украинско-европейский ростер Natus Vincere обыграл Team Spirit со счетом 2:1 в захватывающем полуфинале LAN-турнира IEM Chengdu 2026.<br><br>Первая карта Anubis досталась Spirit благодаря перформансу donk (31 фраг). Однако на Nuke и Mirage NAVI смогли нивелировать агрессию оппонентов с помощью макро-команд Aleksib и ключевых клатчей от b1t.`,
+                    en: `The Ukrainian-European roster of Natus Vincere defeated Team Spirit 2-1 in a thrilling semi-final of IEM Chengdu 2026.<br><br>The first map Anubis went to Spirit thanks to a standout performance by donk (31 frags). However, on Nuke and Mirage, NAVI shut down opponent aggression through Aleksib's calls and clutches from b1t.`,
+                    uk: `Українсько-європейський склад Natus Vincere переміг Team Spirit з рахунком 2:1 у захоплюючому півфіналі IEM Chengdu 2026.<br><br>Перша карта Anubis дісталася Spirit завдяки яскравому перформансу donk (31 фраг). Проте на Nuke та Mirage NAVI нівелювали агресію суперника за рахунок дій Aleksib та ключових клатчів від b1t.`
+                },
+                comments: [
+                    { user: 'CS2_God', text: 'donk performed well, but NAVI teamplay prevailed!', time: '15 min' },
+                    { user: 'NaviFanBoy', text: 'b1t headshot machine! Finals time!', time: '10 min' }
+                ]
+            },
+            {
+                id: 1,
+                title: {
+                    ru: 'Valve анонсировали следующее крупное обновление CS2: возвращение Train и улучшение сетевого кода',
+                    en: 'Valve announces major CS2 update: Return of Train and subtick fixes',
+                    uk: 'Valve анонсували наступне велике оновлення CS2: повернення Train та покращення тикрейту'
+                },
+                author: 'Striker',
+                time: '120',
+                commentsCount: 89,
+                content: {
+                    ru: 'Valve опубликовала официальный тизер возвращения легендарной карты Train в соревновательный маппул CS2.',
+                    en: 'Valve published an official teaser confirming the legendary Train map returning to the competitive CS2 pool.',
+                    uk: 'Valve опублікували офіційний тизер повернення легендарної карти Train до змагального маппулу CS2.'
+                },
+                comments: []
+            }
+        ];
+
+        // Forum Threads Multilingual
+        let FORUM_THREADS = [
+            {
+                title: {
+                    ru: 'donk vs ZywOo - Кто лучший игрок 2026 года прямо сейчас?',
+                    en: 'donk vs ZywOo - Who is the best player of 2026 right now?',
+                    uk: 'donk vs ZywOo - Хто найкращий гравець 2026 року просто зараз?'
+                },
+                author: 'Baiter99', replies: 312, time: '5', flag: '🇫🇷'
+            },
+            {
+                title: {
+                    ru: 'Вернут ли s1mple в основной состав NAVI?',
+                    en: 'Will s1mple return to the main NAVI roster?',
+                    uk: 'Чи повернуть s1mple до основного складу NAVI?'
+                },
+                author: 'S1mpleIsBack', replies: 148, time: '18', flag: '🇺🇦'
+            },
+            {
+                title: {
+                    ru: 'CS2 Subtick до сих пор ощущается странно на 128hz?',
+                    en: 'Does CS2 Subtick still feel inconsistent on high refresh rates?',
+                    uk: 'Чи CS2 Subtick досі відчувається дивно на високій частоті?'
+                },
+                author: 'ProGamer_DK', replies: 87, time: '42', flag: '🇩🇰'
+            }
+        ];
+
+        // --- TAB SWITCHER ---
+        function switchTab(tabId) {
+            currentTab = tabId;
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            
+            const activeTabEl = document.getElementById(`tab-${tabId}`);
+            if (activeTabEl) activeTabEl.classList.remove('hidden');
+
+            document.querySelectorAll('header nav button').forEach(btn => {
+                btn.classList.remove('text-white', 'bg-hltv-card');
+                btn.classList.add('text-hltv-textMuted');
+            });
+            const activeNavBtn = document.getElementById(`nav-${tabId}`);
+            if (activeNavBtn) {
+                activeNavBtn.classList.add('text-white', 'bg-hltv-card');
+                activeNavBtn.classList.remove('text-hltv-textMuted');
+            }
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function toggleMobileNav() {
+            document.getElementById('mobileNav').classList.toggle('hidden');
+        }
+
+        // Render Featured Hero Banner
+        function renderHeroBanner() {
+            const hero = ARTICLES[0];
+            const titleStr = hero.title[currentLang] || hero.title['en'];
+            const contentStr = hero.content[currentLang] || hero.content['en'];
+
+            document.getElementById('heroNewsBanner').innerHTML = `
+                <img src="https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1200&auto=format&fit=crop&q=80" alt="IEM Major" class="w-full h-56 sm:h-72 object-cover group-hover:scale-105 transition duration-500 opacity-80">
+                <div class="absolute inset-0 bg-gradient-to-t from-[#0e131d] via-black/40 to-transparent p-4 sm:p-6 flex flex-col justify-end">
+                    <div class="flex items-center space-x-2 mb-2">
+                        <span class="bg-hltv-blue text-white text-[11px] font-bold px-2 py-0.5 rounded uppercase">IEM Chengdu 2026</span>
+                        <span class="text-xs text-gray-300"><i class="fa-regular fa-clock mr-1"></i>20 ${t('min_ago')}</span>
+                        <span class="text-xs text-hltv-accent font-semibold"><i class="fa-regular fa-comment mr-1"></i>142</span>
+                    </div>
+                    <h1 class="text-lg sm:text-2xl font-bold text-white leading-snug group-hover:text-hltv-blue transition">
+                        ${titleStr}
+                    </h1>
+                    <p class="text-xs sm:text-sm text-gray-300 mt-2 line-clamp-2">
+                        ${contentStr}
+                    </p>
+                </div>
+            `;
+        }
+
+        // Render Live Ticker
+        function renderTopTicker() {
+            const container = document.getElementById('topTickerContainer');
+            container.innerHTML = MATCHES.map(m => {
+                const liveBadge = m.isLive ? `<span class="inline-block w-2 h-2 rounded-full bg-red-600 live-pulse mr-1"></span>` : '';
+                return `
+                    <div onclick="openMatchModal(${m.id})" class="bg-[#18202d] hover:bg-hltv-cardHover border border-hltv-border px-2.5 py-1 rounded flex items-center space-x-2 cursor-pointer transition">
+                        ${liveBadge}
+                        <span class="font-bold text-white">${m.team1}</span>
+                        <span class="text-hltv-accent font-mono font-bold">${m.isLive ? `${m.currentRoundT1}:${m.currentRoundT2}` : 'vs'}</span>
+                        <span class="font-bold text-white">${m.team2}</span>
+                        <span class="text-[10px] text-hltv-textMuted border-l border-gray-700 pl-1.5">${m.isLive ? m.liveMap : m.time}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Render Home Matches
+        function renderHomeMatches() {
+            const container = document.getElementById('homeMatchesContainer');
+            let filtered = MATCHES.filter(m => matchFilterStars === 0 || m.stars >= matchFilterStars);
+
+            document.getElementById('matchCounterText').innerText = t('matches_shown').replace('{count}', filtered.length);
+
+            container.innerHTML = filtered.map(m => {
+                const starsHtml = '★'.repeat(m.stars) + '<span class="star-empty">' + '★'.repeat(5 - m.stars) + '</span>';
+                const timeStr = m.time.includes('16:00') || m.time.includes('20:30') ? `${t('time_today')}, ${m.time}` : m.time;
+
+                return `
+                    <div onclick="openMatchModal(${m.id})" class="p-3 hover:bg-hltv-cardHover transition flex items-center justify-between cursor-pointer flex-wrap gap-2">
+                        <div class="flex items-center space-x-3 w-full sm:w-auto">
+                            <span class="text-xs star-filled font-mono">${starsHtml}</span>
+                            <span class="text-xs font-semibold text-hltv-textMuted truncate max-w-[200px]">${m.event}</span>
+                        </div>
+
+                        <div class="flex items-center space-x-4">
+                            <div class="flex items-center space-x-2 font-bold ${m.isLive ? 'text-white' : 'text-gray-200'}">
+                                <span>${m.team1}</span>
+                                <span class="bg-[#121824] px-2 py-0.5 rounded font-mono text-hltv-accent border border-hltv-border">
+                                    ${m.isLive ? `${m.currentRoundT1} - ${m.currentRoundT2}` : (m.isFinished ? `${m.t1Score} - ${m.t2Score}` : 'VS')}
+                                </span>
+                                <span>${m.team2}</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            ${m.isLive ? 
+                                `<span class="bg-red-600/90 text-white text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1"><i class="fa-solid fa-signal text-[9px]"></i> ${t('live_now')}</span>` : 
+                                `<span class="text-xs text-hltv-textMuted font-mono">${timeStr}</span>`
+                            }
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Render Sidebar Ranking Mini-List
+        function renderSidebarRankings() {
+            const container = document.getElementById('sidebarRankingContainer');
+            const top10 = TEAMS.slice(0, 10);
+
+            container.innerHTML = top10.map((tItem, idx) => `
+                <div class="flex items-center justify-between p-1.5 rounded hover:bg-[#121824] transition text-xs">
+                    <div class="flex items-center space-x-2">
+                        <span class="font-mono font-bold w-4 text-hltv-textMuted">#${idx + 1}</span>
+                        <span class="text-sm">${tItem.flag}</span>
+                        <span class="font-bold text-white hover:text-hltv-blue transition cursor-pointer">${tItem.name}</span>
+                    </div>
+                    <span class="font-mono text-[11px] text-hltv-accent font-semibold">${tItem.points} ${t('points')}</span>
+                </div>
+            `).join('');
+        }
+
+        // Render Sidebar Tournaments List
+        function renderSidebarEvents() {
+            const container = document.getElementById('sidebarEventsList');
+            container.innerHTML = `
+                <div class="p-2.5 bg-[#121824] rounded border border-hltv-border flex items-center justify-between hover:border-hltv-blue transition cursor-pointer">
+                    <div>
+                        <div class="font-bold text-xs text-white">IEM Chengdu 2026</div>
+                        <div class="text-[11px] text-hltv-textMuted">$1,000,000 • Play-Offs</div>
+                    </div>
+                    <span class="bg-red-900/60 text-red-300 text-[10px] font-bold px-2 py-0.5 rounded border border-red-700">${t('live_now')}</span>
+                </div>
+
+                <div class="p-2.5 bg-[#121824] rounded border border-hltv-border flex items-center justify-between hover:border-hltv-border transition cursor-pointer">
+                    <div>
+                        <div class="font-bold text-xs text-white">ESL Pro League Season 21</div>
+                        <div class="text-[11px] text-hltv-textMuted">$750,000 • Malta</div>
+                    </div>
+                    <span class="text-[10px] text-hltv-textMuted font-medium">10 - 25 Apr</span>
+                </div>
+            `;
+        }
+
+        // Render Home News Feed
+        function renderLatestNews() {
+            const container = document.getElementById('latestNewsContainer');
+            container.innerHTML = ARTICLES.map((art) => `
+                <div onclick="openArticleModal(${art.id})" class="p-2.5 rounded bg-[#121824] hover:bg-hltv-border transition cursor-pointer flex justify-between items-center">
+                    <div>
+                        <h3 class="font-bold text-xs text-white hover:text-hltv-blue transition">${art.title[currentLang] || art.title['en']}</h3>
+                        <div class="text-[10px] text-hltv-textMuted mt-1">
+                            <i class="fa-regular fa-user mr-1"></i>${art.author} • ${art.time} ${t('min_ago')}
+                        </div>
+                    </div>
+                    <span class="text-xs text-hltv-textMuted bg-hltv-card px-2 py-1 rounded font-mono">
+                        <i class="fa-regular fa-comment mr-1 text-hltv-blue"></i>${art.commentsCount}
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        function filterMatchesByStars(stars) {
+            matchFilterStars = stars;
+            renderHomeMatches();
+        }
+
+        function switchMatchSubtab(sub) {
+            activeMatchSubtab = sub;
+            ['all', 'live', 'results'].forEach(s => {
+                const btn = document.getElementById(`subtab-match-${s}`);
+                if (btn) {
+                    btn.classList.remove('bg-hltv-blue', 'text-white');
+                    btn.classList.add('text-hltv-textMuted');
+                }
+            });
+            const activeBtn = document.getElementById(`subtab-match-${sub}`);
+            if (activeBtn) {
+                activeBtn.classList.add('bg-hltv-blue', 'text-white');
+                activeBtn.classList.remove('text-hltv-textMuted');
+            }
+            renderMatchesTab();
+        }
+
+        function renderMatchesTab() {
+            const container = document.getElementById('matchesTabContent');
+            let list = MATCHES;
+
+            if (activeMatchSubtab === 'live') list = MATCHES.filter(m => m.isLive);
+            if (activeMatchSubtab === 'results') list = MATCHES.filter(m => m.isFinished);
+
+            if (list.length === 0) {
+                container.innerHTML = `<div class="p-6 text-center text-hltv-textMuted">No matches found</div>`;
+                return;
+            }
+
+            container.innerHTML = list.map(m => `
+                <div onclick="openMatchModal(${m.id})" class="p-4 hover:bg-hltv-cardHover transition flex items-center justify-between cursor-pointer flex-wrap gap-4">
+                    <div class="flex items-center space-x-3">
+                        <span class="star-filled text-xs">${'★'.repeat(m.stars)}</span>
+                        <div>
+                            <div class="font-bold text-white text-sm">${m.team1} vs ${m.team2}</div>
+                            <div class="text-xs text-hltv-textMuted">${m.event}</div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-4">
+                        <div class="text-right">
+                            <div class="font-mono font-bold text-hltv-accent text-sm">
+                                ${m.isLive ? `${m.currentRoundT1} : ${m.currentRoundT2}` : (m.isFinished ? `${m.t1Score} : ${m.t2Score}` : 'VS')}
+                            </div>
+                            <div class="text-[10px] text-hltv-textMuted">${m.isLive ? m.liveMap : ''}</div>
+                        </div>
+                        ${m.isLive ? `<span class="bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded">${t('live_now')}</span>` : `<span class="text-xs font-mono text-hltv-textMuted">${m.time}</span>`}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderRankingsTab() {
+            const container = document.getElementById('fullRankingsList');
+            container.innerHTML = TEAMS.map((team, idx) => `
+                <div class="bg-hltv-card rounded-lg border border-hltv-border p-3 sm:p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 hover:border-hltv-blue transition">
+                    <div class="flex items-center space-x-3">
+                        <span class="font-mono text-lg font-extrabold text-hltv-blue w-8">#${idx + 1}</span>
+                        <span class="text-xl">${team.flag}</span>
+                        <div>
+                            <div class="font-bold text-white text-base hover:text-hltv-blue cursor-pointer">${team.name}</div>
+                            <div class="text-xs text-hltv-textMuted mt-0.5">
+                                ${t('roster')}: ${team.roster.join(', ')}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-4 self-end sm:self-auto">
+                        <div class="text-right">
+                            <div class="font-mono font-bold text-hltv-accent">${team.points} ${t('points')}</div>
+                            <div class="text-[11px] text-green-400 font-semibold"><i class="fa-solid fa-caret-up"></i> +${team.change || 0}</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderStatsTable() {
+            const body = document.getElementById('statsLeaderboardBody');
+            body.innerHTML = PLAYERS.map(p => `
+                <tr onclick="openPlayerModal('${p.name}')" class="hover:bg-hltv-cardHover transition cursor-pointer border-b border-hltv-border">
+                    <td class="py-3 px-4 flex items-center space-x-2">
+                        <span class="text-base">${p.country}</span>
+                        <span class="font-bold text-white hover:text-hltv-blue">${p.name}</span>
+                    </td>
+                    <td class="py-3 px-3 text-hltv-textMuted">${p.team}</td>
+                    <td class="py-3 px-3 text-center font-mono">${p.maps}</td>
+                    <td class="py-3 px-3 text-center font-mono text-green-400 font-bold">+284</td>
+                    <td class="py-3 px-3 text-center font-mono">${p.kd}</td>
+                    <td class="py-3 px-3 text-center font-mono">${p.adr}</td>
+                    <td class="py-3 px-3 text-center font-mono">${p.kast}</td>
+                    <td class="py-3 px-3 text-right font-mono font-extrabold text-hltv-accent text-sm">${p.rating}</td>
+                </tr>
+            `).join('');
+        }
+
+        function renderEventsTab() {
+            const container = document.getElementById('eventsGridContainer');
+            const events = [
+                { name: 'IEM Chengdu 2026', prize: '$1,000,000', location: 'Chengdu, China', date: '21 - 27 Mar', teams: 16, status: t('live_now') },
+                { name: 'ESL Pro League Season 21', prize: '$750,000', location: 'St. Julians, Malta', date: '10 - 25 Apr', teams: 24, status: 'Upcoming' },
+                { name: 'BLAST Premier Spring Final 2026', prize: '$425,000', location: 'London, UK', date: '12 - 18 May', teams: 8, status: 'Announced' },
+                { name: 'PGL CS2 Major Austin 2026', prize: '$1,250,000', location: 'Austin, USA', date: '8 - 21 Jun', teams: 24, status: 'Major Tournament' }
+            ];
+
+            container.innerHTML = events.map(e => `
+                <div class="bg-hltv-card rounded-lg border border-hltv-border p-4 space-y-3 relative overflow-hidden">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-[10px] uppercase font-bold text-hltv-accent tracking-wider">${e.status}</span>
+                            <h3 class="text-lg font-bold text-white">${e.name}</h3>
+                        </div>
+                        <span class="bg-[#121824] px-2.5 py-1 rounded text-xs font-mono font-bold text-green-400 border border-hltv-border">${e.prize}</span>
+                    </div>
+
+                    <div class="text-xs space-y-1 text-hltv-textMuted">
+                        <div><i class="fa-solid fa-location-dot mr-1 text-hltv-blue"></i> ${e.location}</div>
+                        <div><i class="fa-regular fa-calendar mr-1"></i> ${e.date}</div>
+                        <div><i class="fa-solid fa-users mr-1"></i> ${e.teams} ${t('teams_count')}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderForumTab() {
+            const container = document.getElementById('forumThreadsContainer');
+            container.innerHTML = FORUM_THREADS.map(tItem => {
+                const titleStr = tItem.title[currentLang] || tItem.title['en'];
+                return `
+                    <div class="p-3 hover:bg-hltv-cardHover transition grid grid-cols-12 items-center cursor-pointer text-xs">
+                        <div class="col-span-7 sm:col-span-8 flex items-center space-x-2">
+                            <span>${tItem.flag}</span>
+                            <span class="font-bold text-white hover:text-hltv-blue">${titleStr}</span>
+                        </div>
+                        <div class="col-span-2 text-center text-hltv-textMuted font-mono">${tItem.author}</div>
+                        <div class="col-span-3 sm:col-span-2 text-right font-mono text-hltv-accent">${tItem.replies} ${t('th_replies')}</div>
+                    </div>
+                `;
+            }).join('');
+
+            const sidebarContainer = document.getElementById('sidebarForumThreads');
+            if (sidebarContainer) {
+                sidebarContainer.innerHTML = FORUM_THREADS.slice(0, 3).map(tItem => `
+                    <div class="p-1.5 rounded hover:bg-[#121824] text-xs transition cursor-pointer">
+                        <div class="font-semibold text-white hover:text-hltv-blue truncate">${tItem.title[currentLang] || tItem.title['en']}</div>
+                        <div class="text-[10px] text-hltv-textMuted flex justify-between mt-0.5">
+                            <span>${tItem.author}</span>
+                            <span class="text-hltv-accent font-mono">${tItem.replies}</span>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function openMatchModal(matchId) {
+            const match = MATCHES.find(m => m.id === matchId);
+            if (!match) return;
+
+            const modalContent = document.getElementById('matchModalContent');
+            
+            modalContent.innerHTML = `
+                <div class="text-center border-b border-hltv-border pb-4 mb-4">
+                    <span class="text-xs font-bold text-hltv-accent uppercase tracking-wider">${match.event}</span>
+                    <div class="flex justify-center items-center space-x-6 sm:space-x-12 my-3">
+                        <div class="text-center">
+                            <div class="text-xl sm:text-3xl font-extrabold text-white">${match.team1}</div>
+                            <span class="text-xs text-hltv-textMuted">Pick / Veto Winner</span>
+                        </div>
+
+                        <div class="bg-[#121824] border border-hltv-border px-4 py-2 rounded-lg text-center">
+                            <div class="text-2xl sm:text-4xl font-mono font-extrabold text-hltv-blue">
+                                ${match.isLive ? `${match.currentRoundT1} : ${match.currentRoundT2}` : `${match.t1Score} : ${match.t2Score}`}
+                            </div>
+                            <span class="text-[10px] text-red-500 font-bold uppercase">${match.isLive ? t('live_now') : t('finished')}</span>
+                        </div>
+
+                        <div class="text-center">
+                            <div class="text-xl sm:text-3xl font-extrabold text-white">${match.team2}</div>
+                            <span class="text-xs text-hltv-textMuted">World Rank #2</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4 bg-[#121824] p-3 rounded-lg border border-hltv-border">
+                    <h4 class="text-xs font-bold uppercase text-hltv-textMuted mb-2"><i class="fa-solid fa-map mr-1"></i> ${t('map_results')}</h4>
+                    <div class="grid grid-cols-3 gap-2 text-center text-xs font-mono">
+                        <div class="bg-hltv-card p-2 rounded border border-hltv-border">
+                            <div class="text-hltv-textMuted">Map 1: Dust II</div>
+                            <div class="font-bold text-white mt-0.5">13 - 11 (NAVI)</div>
+                        </div>
+                        <div class="bg-hltv-card p-2 rounded border border-hltv-border">
+                            <div class="text-hltv-textMuted">Map 2: Nuke</div>
+                            <div class="font-bold text-white mt-0.5">9 - 13 (Vitality)</div>
+                        </div>
+                        <div class="bg-hltv-card p-2 rounded border border-hltv-blue">
+                            <div class="text-hltv-blue font-bold">Map 3: Mirage</div>
+                            <div class="font-bold text-white mt-0.5">${match.currentRoundT1 || 11} - ${match.currentRoundT2 || 10}</div>
+                        </div>
+                    </div>
+                </div>
+
+                ${match.isLive ? `
+                    <div class="mb-4 bg-[#0b0e16] p-3 rounded-lg border border-red-900/50">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-bold text-red-400 flex items-center gap-1">
+                                <span class="w-2 h-2 rounded-full bg-red-600 live-pulse"></span> ${t('live_feed')}
+                            </span>
+                            <button onclick="simulateNextRound(${match.id})" class="text-[11px] bg-hltv-blue text-white px-2 py-0.5 rounded font-bold hover:bg-hltv-blueHover">
+                                ${t('sim_round')}
+                            </button>
+                        </div>
+                        <div class="space-y-1 font-mono text-xs text-gray-300" id="liveKillFeedBox">
+                            ${match.killFeed ? match.killFeed.map(k => `<div class="bg-hltv-card/60 px-2 py-1 rounded">${k}</div>`).join('') : '...'}
+                        </div>
+                    </div>
+                ` : ''}
+
+                <div>
+                    <h4 class="text-xs font-bold uppercase text-hltv-textMuted mb-2">${t('player_stats_map')}</h4>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-[#121824] text-hltv-textMuted border-b border-hltv-border font-mono">
+                                    <th class="py-2 px-2">${t('th_player')} (${match.team1})</th>
+                                    <th class="py-2 px-2 text-center">K - D</th>
+                                    <th class="py-2 px-2 text-center">ADR</th>
+                                    <th class="py-2 px-2 text-right">Rating 2.0</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-hltv-border font-mono">
+                                <tr>
+                                    <td class="py-2 px-2 font-bold text-white">b1t</td>
+                                    <td class="py-2 px-2 text-center text-green-400">22 - 12</td>
+                                    <td class="py-2 px-2 text-center">94.5</td>
+                                    <td class="py-2 px-2 text-right font-bold text-hltv-accent">1.45</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 px-2 font-bold text-white">w0nderful</td>
+                                    <td class="py-2 px-2 text-center text-green-400">18 - 11</td>
+                                    <td class="py-2 px-2 text-center">81.2</td>
+                                    <td class="py-2 px-2 text-right font-bold text-hltv-accent">1.28</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('matchModal').classList.remove('hidden');
+        }
+
+        function closeMatchModal() {
+            document.getElementById('matchModal').classList.add('hidden');
+        }
+
+        function simulateNextRound(matchId) {
+            const match = MATCHES.find(m => m.id === matchId);
+            if (!match) return;
+
+            if (Math.random() > 0.5) match.currentRoundT1++;
+            else match.currentRoundT2++;
+
+            const mockKills = [
+                'donk 💣 planted C4 on Mirage A site',
+                'b1t 🎯 noscope headshot on ZywOo',
+                'm0NESY 🗡️ knife kill in Connector!',
+                'ropz 💥 1v3 Clutch Defuse!'
+            ];
+            const randomKill = mockKills[Math.floor(Math.random() * mockKills.length)];
+            
+            if (!match.killFeed) match.killFeed = [];
+            match.killFeed.unshift(randomKill);
+
+            renderTopTicker();
+            renderHomeMatches();
+            openMatchModal(matchId);
+        }
+
+        function openPlayerModal(playerName) {
+            const player = PLAYERS.find(p => p.name.toLowerCase() === playerName.toLowerCase()) || PLAYERS[0];
+            const content = document.getElementById('playerModalContent');
+
+            content.innerHTML = `
+                <div class="flex flex-col sm:flex-row items-center sm:items-start gap-4 border-b border-hltv-border pb-4 mb-4">
+                    <img src="${player.img}" alt="${player.name}" class="w-24 h-24 sm:w-32 sm:h-32 rounded-lg object-cover border-2 border-hltv-blue shadow-lg">
+                    <div class="text-center sm:text-left space-y-1">
+                        <div class="flex items-center justify-center sm:justify-start space-x-2">
+                            <span class="text-2xl">${player.country}</span>
+                            <h2 class="text-2xl font-extrabold text-white">${player.name}</h2>
+                        </div>
+                        <p class="text-xs text-hltv-textMuted">${player.fullName}</p>
+                        <div class="inline-block bg-[#121824] px-2.5 py-1 rounded border border-hltv-border text-xs font-semibold text-hltv-blue">
+                            ${player.team} • ${player.role}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center font-mono">
+                    <div class="bg-[#121824] p-3 rounded border border-hltv-border">
+                        <div class="text-[10px] text-hltv-textMuted uppercase">Rating 2.0</div>
+                        <div class="text-xl font-bold text-hltv-accent mt-1">${player.rating}</div>
+                    </div>
+                    <div class="bg-[#121824] p-3 rounded border border-hltv-border">
+                        <div class="text-[10px] text-hltv-textMuted uppercase">K/D Ratio</div>
+                        <div class="text-xl font-bold text-green-400 mt-1">${player.kd}</div>
+                    </div>
+                    <div class="bg-[#121824] p-3 rounded border border-hltv-border">
+                        <div class="text-[10px] text-hltv-textMuted uppercase">ADR</div>
+                        <div class="text-xl font-bold text-white mt-1">${player.adr}</div>
+                    </div>
+                    <div class="bg-[#121824] p-3 rounded border border-hltv-border">
+                        <div class="text-[10px] text-hltv-textMuted uppercase">KAST</div>
+                        <div class="text-xl font-bold text-white mt-1">${player.kast}</div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('playerModal').classList.remove('hidden');
+        }
+
+        function closePlayerModal() {
+            document.getElementById('playerModal').classList.add('hidden');
+        }
+
+        function openArticleModal(articleId) {
+            const article = ARTICLES.find(a => a.id === articleId) || ARTICLES[0];
+            const content = document.getElementById('articleModalContent');
+
+            const titleStr = article.title[currentLang] || article.title['en'];
+            const contentStr = article.content[currentLang] || article.content['en'];
+
+            content.innerHTML = `
+                <div class="border-b border-hltv-border pb-3">
+                    <h1 class="text-lg sm:text-xl font-bold text-white">${titleStr}</h1>
+                    <div class="text-xs text-hltv-textMuted mt-1">Author: ${article.author} • ${article.time} ${t('min_ago')}</div>
+                </div>
+
+                <div class="text-xs sm:text-sm text-gray-200 leading-relaxed py-2">
+                    ${contentStr}
+                </div>
+
+                <div class="border-t border-hltv-border pt-4 mt-4">
+                    <h3 class="font-bold text-xs uppercase text-hltv-textMuted mb-3"><i class="fa-regular fa-comments mr-1"></i> ${t('comments')} (${article.comments.length})</h3>
+                    
+                    <div class="flex gap-2 mb-3">
+                        <input type="text" id="newCommentInput" placeholder="${t('leave_comment')}" class="bg-[#121824] border border-hltv-border text-xs text-white rounded px-3 py-1.5 flex-grow focus:outline-none focus:border-hltv-blue">
+                        <button onclick="addCommentToArticle(${article.id})" class="bg-hltv-blue text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-hltv-blueHover">${t('send_comment')}</button>
+                    </div>
+
+                    <div id="articleCommentsList" class="space-y-2">
+                        ${article.comments.map(c => `
+                            <div class="bg-[#121824] p-2.5 rounded border border-hltv-border text-xs">
+                                <div class="flex justify-between font-bold text-white mb-1">
+                                    <span>${c.user}</span>
+                                    <span class="text-[10px] text-hltv-textMuted font-normal">${c.time}</span>
+                                </div>
+                                <div class="text-gray-300">${c.text}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('articleModal').classList.remove('hidden');
+        }
+
+        function closeArticleModal() {
+            document.getElementById('articleModal').classList.add('hidden');
+        }
+
+        function addCommentToArticle(articleId) {
+            const input = document.getElementById('newCommentInput');
+            if (!input || !input.value.trim()) return;
+
+            const article = ARTICLES.find(a => a.id === articleId);
+            if (article) {
+                article.comments.unshift({
+                    user: 's1mple_fan99',
+                    text: input.value.trim(),
+                    time: 'Just now'
+                });
+                article.commentsCount = article.comments.length;
+                openArticleModal(articleId);
+                renderLatestNews();
+            }
+        }
+
+        function openNewThreadModal() {
+            document.getElementById('newThreadModal').classList.remove('hidden');
+        }
+        function closeNewThreadModal() {
+            document.getElementById('newThreadModal').classList.add('hidden');
+        }
+        function submitNewThread() {
+            const title = document.getElementById('newThreadTitle').value.trim();
+            if (!title) return;
+
+            FORUM_THREADS.unshift({
+                title: { en: title, ru: title, uk: title },
+                author: 's1mple_fan99',
+                replies: 0,
+                time: '0',
+                flag: '🇺🇦'
+            });
+
+            closeNewThreadModal();
+            renderForumTab();
+        }
+
+        function votePoll(optionIdx) {
+            const val0 = document.getElementById('poll-val-0');
+            const val1 = document.getElementById('poll-val-1');
+            if (optionIdx === 0) {
+                val0.innerText = '55%';
+                val1.innerText = '45%';
+            } else {
+                val0.innerText = '53%';
+                val1.innerText = '47%';
+            }
+        }
+
+        function handleGlobalSearch() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            if (!query) return;
+
+            const matchedPlayer = PLAYERS.find(p => p.name.toLowerCase().includes(query));
+            if (matchedPlayer && query.length >= 3) {
+                openPlayerModal(matchedPlayer.name);
+            }
+        }
+
+        function toggleNotifications() {
+            alert('NAVI vs Vitality match is LIVE right now!');
+        }
+
+        // On Page Load Initialization
+        window.onload = function() {
+            changeLanguage('ru'); // Default to Russian, user can click EN / UA / RU anytime
+
+            setInterval(() => {
+                const liveMatch = MATCHES.find(m => m.isLive);
+                if (liveMatch && Math.random() > 0.6) {
+                    if (Math.random() > 0.5) liveMatch.currentRoundT1++;
+                    else liveMatch.currentRoundT2++;
+                    renderTopTicker();
+                    if (currentTab === 'home') renderHomeMatches();
+                }
+            }, 8000);
+        };
+    </script>
+</body>
+</html>
